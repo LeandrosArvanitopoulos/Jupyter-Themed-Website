@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leandros Arvanitopoulos — Notebook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #08090b;
+      --bg-rgb: 8, 9, 11;
+      --panel-rgb: 16, 18, 22;
+      --cell-bg: rgba(16, 18, 22, 0.82);
+      --cell-bg-hover: rgba(20, 23, 28, 0.92);
+      --border: #22262c;
+      --border-active: #3a4048;
+      --text: #e8e6e1;
+      --muted: #7a8087;
+      --muted-2: #565b61;
+      --signal: #7cffb2;
+      --signal-rgb: 124, 255, 178;
+      --signal-dim: #4a9b73;
+      --amber: #ffb26b;
+      --amber-dim: #a5744a;
+      /* toolbar buttons sit on a background hue-shifted (toward blue/violet)
+         off the page background, so they read as distinct chips at rest */
+      --toolbar-btn-bg: #13141f;
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f6f7;
+      --bg-rgb: 245, 246, 247;
+      --panel-rgb: 255, 255, 255;
+      --cell-bg: rgba(255, 255, 255, 0.85);
+      --cell-bg-hover: rgba(255, 255, 255, 0.97);
+      --border: #c7ccd0;
+      --border-active: #9aa0a6;
+      --text: #0a0c0d;
+      --muted: #3a3f44;
+      --muted-2: #5b6167;
+      --signal: #0f5a3b;
+      --signal-rgb: 15, 90, 59;
+      --signal-dim: #0b4530;
+      --amber: #2f3338;
+      --amber-dim: #565c62;
+      --toolbar-btn-bg: #e3e6ea;
+    }
+
+    html {
+      transition: background .2s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      /* overflow-x: hidden; */
+      overflow: visible;
+      /*This fixes the toolbar from being scrolled off*/
+
+    }
+
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      display: block;
+      transition: opacity .4s ease;
+    }
+
+    #bg-canvas.hidden {
+      opacity: 0;
+    }
+
+    .scanline-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(ellipse at 50% 0%, rgba(var(--bg-rgb), 0) 0%, rgba(var(--bg-rgb), 0.55) 75%, rgba(var(--bg-rgb), 0.9) 100%);
+      transition: opacity .4s ease;
+    }
+
+    .scanline-overlay.hidden {
+      opacity: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 2;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 64px 24px 120px;
+    }
+
+    /* --- Toolbar --- */
+    .kernel-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 10px 24px;
+      background: rgba(var(--bg-rgb), 0.85);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      transition: box-shadow .2s ease, background .2s ease;
+    }
+
+    /* Content inside the bar lines up with the notebook column below it
+       (max-width: 760px, centered) instead of hugging the raw viewport
+       edges — so the toolbar's right edge matches the cells' border. */
+    .kernel-bar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .kernel-bar.scrolled {
+      background: rgba(var(--bg-rgb), 0.96);
+      box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    .kernel-status {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .kernel-bar .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+      margin-right: 7px;
+      box-shadow: 0 0 6px var(--signal);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.35;
+      }
+    }
+
+    .menu-fake {
+      display: flex;
+      gap: 4px;
+    }
+
+    .menu-item {
+      position: relative;
+    }
+
+    .menu-item>button {
+      /* hue-shifted off the plain background so the buttons read as
+         distinct chips at rest, not just plain text */
+      background: var(--toolbar-btn-bg);
+      border: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 5px 9px;
+      cursor: pointer;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+      transition: color .15s ease, background .15s ease;
+    }
+
+    .menu-item>button:hover,
+    .menu-item.open>button {
+      color: var(--signal);
+      background: rgba(var(--signal-rgb), 0.08);
+    }
+
+    .menu-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 200px;
+      max-width: calc(100vw - 32px);
+      background: rgb(var(--panel-rgb));
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+      padding: 6px;
+      display: none;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .menu-dropdown.align-right {
+      left: auto;
+      right: 0;
+    }
+
+    .menu-item.open .menu-dropdown {
+      display: flex;
+    }
+
+    .menu-dropdown button {
+      background: none;
+      border: none;
+      text-align: left;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .menu-dropdown button:hover {
+      background: rgba(var(--signal-rgb), 0.1);
+      color: var(--signal);
+    }
+
+    .menu-dropdown button .check {
+      color: var(--signal);
+      font-size: 11px;
+      opacity: 0;
+    }
+
+    .menu-dropdown button[data-active="true"] .check {
+      opacity: 1;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgb(var(--panel-rgb));
+      border: 1px solid var(--border-active);
+      color: var(--signal);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      padding: 10px 16px;
+      border-radius: 4px;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* --- Header --- */
+    .header-cell {
+      padding-top: 36px;
+      margin-bottom: 56px;
+    }
+
+    .header-cell h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 700;
+      font-size: clamp(28px, 5vw, 40px);
+      margin: 0 0 6px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .header-cell .subtitle {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      color: var(--signal);
+      margin: 0 0 18px;
+    }
+
+    .header-cell .subtitle::before {
+      content: "# ";
+      color: var(--muted-2);
+    }
+
+    .contact-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 22px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .contact-row a {
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color .15s ease, border-color .15s ease;
+    }
+
+    .contact-row a:hover {
+      color: var(--signal);
+      border-color: var(--signal-dim);
+    }
+
+    /* --- Cells (rendered dynamically) --- */
+    #cells {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cell {
+      display: flex;
+      margin-bottom: 22px;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: cellIn .55s ease forwards;
+    }
+
+    @keyframes cellIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .gutter {
+      position: relative;
+      flex: 0 0 76px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--amber-dim);
+      text-align: right;
+      padding-right: 14px;
+      user-select: none;
+    }
+
+    .gutter .md-label {
+      display: block;
+      padding-top: 16px;
+    }
+
+    .gutter .in-label,
+    .gutter .out-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 14px;
+    }
+
+    .gutter .out-label {
+      color: var(--muted-2);
+    }
+
+    .cell-body {
+      flex: 1;
+      min-width: 0;
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--border);
+      border-radius: 3px;
+      padding: 18px 22px;
+      backdrop-filter: blur(6px);
+      transition: border-color .2s ease, background .2s ease;
+    }
+
+    .cell:hover .cell-body {
+      border-left-color: var(--signal-dim);
+      background: var(--cell-bg-hover);
+    }
+
+    .cell-body.markdown {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .cell-body.markdown h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--signal);
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+
+    .cell-body.markdown p {
+      margin: 0 0 10px;
+    }
+
+    .cell-body.markdown p:last-child {
+      margin-bottom: 0;
+    }
+
+    .cell-body strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .cell-body.code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .code-src {
+      white-space: pre-wrap;
+    }
+
+    .kw {
+      color: #c792ea;
+    }
+
+    .str {
+      color: var(--signal);
+    }
+
+    .com {
+      color: var(--muted-2);
+      font-style: italic;
+    }
+
+    .num {
+      color: var(--amber);
+    }
+
+    .output-block {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.85;
+    }
+
+    .out-field {
+      color: var(--muted);
+    }
+
+    .out-val {
+      color: var(--text);
+    }
+
+    .tag {
+      display: inline-block;
+      background: rgba(var(--signal-rgb), 0.08);
+      border: 1px solid rgba(var(--signal-rgb), 0.25);
+      color: var(--signal);
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin: 3px 6px 3px 0;
+    }
+
+    .out-list {
+      color: var(--text);
+    }
+
+    .out-list::before {
+      content: "– ";
+      color: var(--muted-2);
+    }
+
+    footer {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11.5px;
+      color: var(--muted-2);
+      padding: 20px 24px 40px;
+    }
+
+    footer .blink {
+      display: inline-block;
+      width: 7px;
+      height: 13px;
+      background: var(--signal);
+      margin-left: 4px;
+      vertical-align: -2px;
+      animation: blink 1.1s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    @media (max-width:600px) {
+      .gutter {
+        flex-basis: 44px;
+        font-size: 10px;
+        padding-right: 8px;
+      }
+
+      .cell-body {
+        padding: 14px 16px;
+      }
+
+      .wrap {
+        padding: 40px 14px 100px;
+      }
+
+      .menu-fake {
+        gap: 0;
+      }
+
+      .menu-item>button {
+        padding: 5px 6px;
+        font-size: 11px;
+      }
+
+      .kernel-status {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cell {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+
+      .kernel-bar .dot,
+      footer .blink {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+  <div class="scanline-overlay"></div>
+
+  <div class="kernel-bar" id="kernelBar">
+    <div class="kernel-bar-inner">
+      <div class="kernel-status"><span class="dot"></span>kernel: python3 — connected</div>
+      <div class="menu-fake" id="menuFake"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="header-cell">
+      <h1>Leandros N. Arvanitopoulos</h1>
+      <p class="subtitle">Electrical &amp; Computer Engineer — Deep Learning, BCI, Signal Processing</p>
+      <div class="contact-row">
+        <span>Patras, Greece</span>
+        <a href="mailto:leandrosarvanitopoulos@gmail.com">leandrosarvanitopoulos@gmail.com</a>
+        <a href="tel:+306947403925">+30 694 740 3925</a>
+        <a href="https://linkedin.com/in/leandros-arvanitopoulos" target="_blank"
+          rel="noopener">linkedin.com/in/leandros-arvanitopoulos</a>
+      </div>
+    </div>
+
+    <div id="cells"></div>
+
+  </div>
+
+  <footer>
+    notebook saved · last executed 2026<span class="blink"></span>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* =========================================================================
+       CELL DATA
+       ---------------------------------------------------------------------
+       This is the ONLY place you need to touch to add, remove, or edit
+       content. Everything below (rendering, numbering, syntax coloring,
+       layout) is generated automatically from this array.
+    
+       Two cell kinds:
+    
+       1) Markdown cell — plain prose, like a notebook markdown cell.
+          { kind: 'markdown', heading: 'about', body: [ 'paragraph one', 'paragraph two' ] }
+          - Use **text** inside a paragraph for bold.
+    
+       2) Code cell — looks like a run code cell with an output underneath.
+          { kind: 'code', code: `...python-ish text...`, output: `...text...` }
+          - "code" is shown as-is with light auto syntax coloring.
+          - "output" is plain text with a few optional shortcuts:
+              key: value        -> rendered as a dimmed label + bright value
+              - some line       -> rendered as a bullet
+              ##Tag One## ##Tag Two##   -> rendered as pill/chip tags
+              **bold text**      -> bold
+            Blank lines become spacing, just like normal.
+    
+       Cells render in array order. Numbering (In [1]:, In [2]:, ...) is
+       assigned automatically to code cells; markdown cells just get a ¶.
+       ========================================================================= */
+
+    const cellsData = [
+      {
+        kind: 'markdown',
+        heading: 'about',
+        body: [
+          "I'm an Electrical & Computer Engineer from the University of Patras, focused on **deep learning applied to biosignals** — my thesis modeled fall detection from movement data, and my research work has centered on EEG and brain-computer interfaces.",
+          "I like problems that sit between signal processing and machine learning: noisy, physical data on one side, and models that have to make sense of it on the other."
+        ]
+      },
+      {
+        kind: 'markdown',
+        heading: 'News',
+        body: [
+          "I am currently excited about my research work on **pretrained foundation models for EEG**. This is a new frontier in neuroscience and machine learning, and I am exploring how large-scale models can be adapted to understand brain signals more effectively.",
+          "Check out my publications and projects for more details on my work in this area."
+        ]
+      },
+      {
+        kind: 'code',
+        code: `from cv import Education
+
+print(Education(institution="University of Patras"))`,
+        output: `Integrated Masters, Electrical & Computer Engineering
+period: Sep 2019 – Sep 2025
+gpa: 7.76 / 10
+thesis: Fall Detection – Prediction using Deep Learning Techniques
+coursework: Signal Processing (9.5) · Machine Learning (9.0) · AI 1/2 (8.5)
+
+4th Lyceum of Patras — High School Diploma
+period: Sep 2016 – Jul 2019
+grade: 19.0 / 20
+math state exam: 19.9 / 20`
+      },
+      {
+        kind: 'code',
+        code: `from cv import Experience
+
+print(Experience(role="Research Assistant"))`,
+        output: `Brain Computer Interface Research Infrastructure, UPatras
+period: Jan 2025 – May 2025
+
+##AI & Neuroengineering## ##Curriculum Design## ##Technical Training##
+
+- Authored a scientific paper on pretrained foundation models for EEG
+- Designed and hosted workshops for a 5-day international summer course
+- Prepared materials and lectured on a Master's HCI/BCI course
+- Trained researchers on Bitbrain and Artinis neurotech equipment`
+      },
+      {
+        kind: 'code',
+        code: `for p in projects:
+    display(p)`,
+        output: `**Functional Connectivity Visualizer** — Python
+Visualizing functional connectivity patterns from neural/biosignal data.
+
+**Hodgkin–Huxley Neuron Simulation** — Python
+Numerical simulation of the classic ion-channel neuron model.
+
+**Gerstner Waves Simulation** — C++ / OpenGL
+Real-time procedural ocean waves using the Gerstner wave model.`
+      },
+      {
+        /*//         code: `skills = {
+      //     "languages": ["Python", "C/C++", "Java", "MATLAB"],
+      //     "ml":        ["TensorFlow", "PyTorch"],
+      //     "other":     ["SQL", "OpenGL", "Matplotlib"]
+      // }
+      // print(skills)`, */
+        kind: 'code',
+        code: `
+for s_key,s_value in skills.items()[:9]:
+  display(s_value)
+
+for s_key in skills.keys():
+    print(skills[s_key])
+        `,
+        output: `##Python## ##TensorFlow## ##PyTorch## ##C/C++## ##SQL## ##OpenGL## ##Java## ##MATLAB## ##Matplotlib##
+
+languages: Greek (Native) · English (C2 Michigan, IELTS 8)
+programming: Python · C/C++ · Java · MATLAB
+ml: TensorFlow · PyTorch
+other: SQL · OpenGL · Matplotlib`
+      },
+      {
+        kind: 'markdown',
+        heading: 'leadership & extracurricular',
+        body: [
+          "**IEEE VR 2024 — 3DUI Contest**, 2nd place (Honorary Award). Built 3D user-interface features in Unity/C# with a small team, presented to an international audience.",
+          "**BEST & IEEE Student Branches**, volunteering leadership, Sep 2023 – Sep 2025.",
+          "**Teaching Assistant**, PID Ball Balancing System project — mentored students through control theory and estimation, Feb–Jun 2022.",
+          "Outside of engineering: piano, math problem solving, and electronics side-projects."
+        ]
+      }
+      // {
+      //   kind: 'markdown',
+      //   heading: 'Questions and Contact',
+      //   body: [
+      //     "Check out my Projects and Publications for more details on my work. If you have questions, want to collaborate, or just want to chat about signal processing and machine learning, feel free to reach out via email or LinkedIn.",
+      //     "Feel free to play with the interactive notebooks found in the jupyter lite link, and download my CV for a more detailed overview of my experience and skills.",
+      //     "Any feedback on the website, the projects or the notebook format is welcome — I'm always looking to improve how I present my work."
+      //   ]
+      // }
+    ];
+
+    /* =========================================================================
+       TOOLBAR MENU DATA
+       Add/remove items here. Each action is just a JS function below.
+       ========================================================================= */
+    const menus = [
+      {
+        label: 'File', items: [
+          { label: 'Download CV (PDF)', action: 'downloadCV' },
+          { label: 'Download as HTML', action: 'downloadHtml' },
+          { label: 'Print / Save as PDF', action: 'printPage' }
+        ]
+      },
+      {
+        label: 'View', items: [
+          { label: 'Connectivity background', action: 'toggleBg', activeKey: 'bg' },
+          { label: 'Vignette', action: 'toggleVignette', activeKey: 'vignette' },
+          // label is a function so it can reflect the *current* theme each render,
+          // showing the mode you'd switch TO, with a matching day/night emoji
+          { getLabel: () => state.lightMode ? 'Dark Mode 🌙' : 'Light Mode ☀️', action: 'toggleTheme' }
+        ]
+      },
+      {
+        label: 'Run', items: [
+          { label: 'Run All Cells', action: 'runAll' },
+          { label: 'Run Projects (JupyterLite) ↗ (coming soon...)', action: 'runProjects' }
+        ]
+      },
+      {
+        label: 'Kernel', items: [
+          { label: 'Change to LinkedIn', action: 'redirectLinkedIn' },
+          { label: 'Change to GitHub', action: 'redirectGitHub' },
+          { label: 'Restart & Run All', action: 'restartAndRunAll' }
+        ]
+      }
+    ];
+
+    /* ---------------------------- rendering ---------------------------- */
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function applyBold(str) {
+      return str.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function highlightCode(raw) {
+      let text = escapeHtml(raw);
+      // strings
+      text = text.replace(/(&quot;.*?&quot;|"[^"]*"|'[^']*')/g, m => `<span class="str">${m}</span>`);
+      // comments (line starting with # outside strings, best-effort)
+      text = text.replace(/(^|\n)(\s*#.*)/g, (m, p1, p2) => `${p1}<span class="com">${p2}</span>`);
+      // keywords
+      const kws = ['from', 'import', 'for', 'in', 'print', 'def', 'return', 'class', 'render', 'True', 'False', 'None'];
+      const kwRe = new RegExp('\\b(' + kws.join('|') + ')\\b', 'g');
+      text = text.replace(kwRe, '<span class="kw">$1</span>');
+      // numbers
+      text = text.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="num">$1</span>');
+      return text;
+    }
+
+    function parseOutput(raw) {
+      const lines = raw.split('\n');
+      const out = [];
+      for (const rawLine of lines) {
+        const line = rawLine;
+        if (line.trim() === '') { out.push(''); continue; }
+
+        // tag row: one or more ##Tag## on the line
+        if (/##.+##/.test(line)) {
+          const tags = [...line.matchAll(/##(.+?)##/g)].map(m => `<span class="tag">${escapeHtml(m[1])}</span>`);
+          out.push(tags.join(''));
+          continue;
+        }
+
+        // bullet
+        if (/^\s*-\s+/.test(line)) {
+          const content = line.replace(/^\s*-\s+/, '');
+          out.push(`<span class="out-list">${applyBold(escapeHtml(content))}</span>`);
+          continue;
+        }
+
+        // key: value  (short key, no leading dash, must contain ": ")
+        const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 /'&]{1,28}):\s+(.*)$/);
+        if (fieldMatch) {
+          out.push(`<span class="out-field">${escapeHtml(fieldMatch[1])}:</span> <span class="out-val">${applyBold(escapeHtml(fieldMatch[2]))}</span>`);
+          continue;
+        }
+
+        out.push(`<span class="out-val">${applyBold(escapeHtml(line))}</span>`);
+      }
+      return out.join('<br>');
+    }
+
+    function renderCells() {
+      const container = document.getElementById('cells');
+      container.innerHTML = '';
+      let execCount = 0;
+
+      cellsData.forEach((cell, idx) => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'cell';
+        cellEl.style.animationDelay = (0.05 + idx * 0.07) + 's';
+
+        const gutter = document.createElement('div');
+        gutter.className = 'gutter';
+
+        const body = document.createElement('div');
+
+        if (cell.kind === 'markdown') {
+          gutter.innerHTML = '<span class="md-label">¶</span>';
+          body.className = 'cell-body markdown';
+          const h2 = document.createElement('h2');
+          h2.textContent = cell.heading;
+          body.appendChild(h2);
+          cell.body.forEach(p => {
+            const pEl = document.createElement('p');
+            pEl.innerHTML = applyBold(escapeHtml(p));
+            body.appendChild(pEl);
+          });
+        } else {
+          execCount++;
+          gutter.innerHTML = `<span class="in-label">In [${execCount}]:</span><span class="out-label">Out[${execCount}]:</span>`;
+          body.className = 'cell-body code';
+          const codeEl = document.createElement('div');
+          codeEl.className = 'code-src';
+          codeEl.innerHTML = highlightCode(cell.code);
+          body.appendChild(codeEl);
+          if (cell.output) {
+            const outEl = document.createElement('div');
+            outEl.className = 'output-block';
+            outEl.innerHTML = parseOutput(cell.output);
+            body.appendChild(outEl);
+          }
+        }
+
+        cellEl.appendChild(gutter);
+        cellEl.appendChild(body);
+        container.appendChild(cellEl);
+      });
+    }
+
+    /* Pin "In [n]:" to the top of the code, and "Out[n]:" to the top of
+       the actual output block — so the label always sits level with the
+       content it refers to, no matter how tall the code above it is. */
+    function alignGutters() {
+      document.querySelectorAll('.cell').forEach(cell => {
+        const body = cell.querySelector('.cell-body.code');
+        if (!body) return;
+        const gutter = cell.querySelector('.gutter');
+        const inLabel = gutter.querySelector('.in-label');
+        const outLabel = gutter.querySelector('.out-label');
+        const codeEl = body.querySelector('.code-src');
+        const outEl = body.querySelector('.output-block');
+        if (inLabel && codeEl) inLabel.style.top = codeEl.offsetTop + 'px';
+        if (outLabel && outEl) outLabel.style.top = outEl.offsetTop + 'px';
+      });
+    }
+
+    let alignRAF;
+    function scheduleAlignGutters() {
+      cancelAnimationFrame(alignRAF);
+      alignRAF = requestAnimationFrame(alignGutters);
+    }
+
+    window.addEventListener('load', alignGutters);   // after web fonts settle
+    window.addEventListener('resize', scheduleAlignGutters, { passive: true });
+    window.addEventListener('resize', () => {
+      const openDropdown = document.querySelector('.menu-item.open .menu-dropdown');
+      if (openDropdown) positionDropdown(openDropdown);
+    }, { passive: true });
+
+    /* ---------------------------- toolbar ---------------------------- */
+
+    const state = { bg: true, vignette: true, lightMode: false };
+
+    // TODO: point this at your deployed JupyterLite instance once it's live
+    // e.g. 'https://<username>.github.io/<repo>/lite/lab/index.html'
+    const JUPYTERLITE_URL = 'https://leandros.github.io/personal-website/lite/lab/index.html';
+
+    function runProjects() {
+      window.open(JUPYTERLITE_URL, '_blank', 'noopener');
+    }
+
+    // Apply saved theme (or system preference) before first paint.
+    // Default to dark mode. Only switch to light if the visitor
+    // previously chose it themselves (saved in localStorage) —
+    // system color-scheme preference is no longer used as a default.
+    (function initTheme() {
+      const saved = localStorage.getItem('theme');
+      state.lightMode = saved === 'light';
+      document.documentElement.setAttribute('data-theme', state.lightMode ? 'light' : 'dark');
+    })();
+
+    function toggleTheme() {
+      state.lightMode = !state.lightMode;
+      document.documentElement.setAttribute('data-theme', state.lightMode ? 'light' : 'dark');
+      localStorage.setItem('theme', state.lightMode ? 'light' : 'dark');
+      window.__networkColorRGB = getComputedStyle(document.documentElement).getPropertyValue('--signal-rgb').trim();
+      showToast('Switched to ' + (state.lightMode ? 'light' : 'dark') + ' mode');
+      renderMenus();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(showToast._tid);
+      showToast._tid = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    // Filename of the CV, expected to sit in the same folder as this HTML file.
+    const CV_FILE = 'Leandros_Arvanitopoulos_Curriculum_Vitae.pdf';
+
+    function downloadCV() {
+      const a = document.createElement('a');
+      a.href = CV_FILE;
+      a.download = CV_FILE;
+      a.click();
+      showToast('Downloading CV…');
+    }
+
+    function downloadHtml() {
+      const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'leandros-notebook.html';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded notebook as HTML');
+    }
+
+    function printPage() { window.print(); }
+
+    function toggleBg() {
+      state.bg = !state.bg;
+      document.getElementById('bg-canvas').classList.toggle('hidden', !state.bg);
+      showToast('Connectivity background ' + (state.bg ? 'on' : 'off'));
+      renderMenus();
+    }
+
+    function toggleVignette() {
+      state.vignette = !state.vignette;
+      document.querySelector('.scanline-overlay').classList.toggle('hidden', !state.vignette);
+      showToast('Vignette ' + (state.vignette ? 'on' : 'off'));
+      renderMenus();
+    }
+
+    function replayCellAnimation() {
+      document.querySelectorAll('.cell').forEach(el => {
+        el.style.animation = 'none';
+        void el.offsetWidth; // force reflow
+        el.style.animation = '';
+      });
+    }
+
+    function runAll() {
+      replayCellAnimation();
+      scheduleAlignGutters();
+      showToast('Running all cells…');
+    }
+
+    function restartAndRunAll() {
+      renderCells();
+      replayCellAnimation();
+      scheduleAlignGutters();
+      showToast('Kernel restarted — running all cells');
+    }
+
+    function redirectLinkedIn() {
+      window.location.href = 'https://linkedin.com/in/leandros-arvanitopoulos';
+    }
+
+    function redirectGitHub() {
+      window.location.href = 'https://github.com/leandrosarvanitopoulos';
+    }
+
+    const actions = { downloadCV, downloadHtml, printPage, toggleBg, toggleVignette, toggleTheme, runAll, runProjects, redirectLinkedIn, redirectGitHub, restartAndRunAll };
+
+    function closeAllMenus() {
+      document.querySelectorAll('.menu-item.open').forEach(m => m.classList.remove('open'));
+    }
+
+    // Keep the open dropdown inside the viewport: measure it after it's
+    // visible, and if it would overflow the right edge, right-align it
+    // against its button instead of left-aligning it.
+    function positionDropdown(dropdown) {
+      dropdown.classList.remove('align-right');
+      const rect = dropdown.getBoundingClientRect();
+      const overflowRight = rect.right > window.innerWidth - 8;
+      if (overflowRight) {
+        dropdown.classList.add('align-right');
+      }
+    }
+
+    function renderMenus() {
+      const wrap = document.getElementById('menuFake');
+      wrap.innerHTML = '';
+      menus.forEach(menu => {
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+
+        const btn = document.createElement('button');
+        btn.textContent = menu.label;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = item.classList.contains('open');
+          closeAllMenus();
+          if (!isOpen) {
+            item.classList.add('open');
+            positionDropdown(dropdown);
+          }
+        });
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'menu-dropdown';
+        menu.items.forEach(mi => {
+          const b = document.createElement('button');
+          const label = document.createElement('span');
+          label.textContent = mi.getLabel ? mi.getLabel() : mi.label;
+          b.appendChild(label);
+          if (mi.activeKey) {
+            const check = document.createElement('span');
+            check.className = 'check';
+            check.textContent = '✓';
+            b.appendChild(check);
+            b.dataset.active = !!state[mi.activeKey];
+          }
+          b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            actions[mi.action]();
+            closeAllMenus();
+          });
+          dropdown.appendChild(b);
+        });
+
+        item.appendChild(btn);
+        item.appendChild(dropdown);
+        wrap.appendChild(item);
+      });
+    }
+
+    document.addEventListener('click', closeAllMenus);
+
+    /* sticky bar shadow while scrolling */
+    const kernelBar = document.getElementById('kernelBar');
+    window.addEventListener('scroll', () => {
+      kernelBar.classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+
+    renderMenus();
+    renderCells();
+    scheduleAlignGutters();
+
+    /* =========================================================================
+       PROCEDURAL BACKGROUND — drifting "functional connectivity" node network
+       ========================================================================= */
+    (function () {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let W, H, DPR;
+      let nodes = [];
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function resize() {
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        initNodes();
+      }
+
+      function initNodes() {
+        const density = (W * H) / 26000;
+        const count = Math.max(28, Math.min(90, Math.round(density)));
+        nodes = [];
+        synapses = []; // node indices are about to be rebuilt — drop any in-flight pulses
+        for (let i = 0; i < count; i++) {
+          nodes.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vx: (Math.random() - 0.5) * 0.18,
+            vy: (Math.random() - 0.5) * 0.18,
+            r: 1.1 + Math.random() * 1.6,
+            phase: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.4 + Math.random() * 0.6
+          });
+        }
+      }
+
+      const LINK_DIST = 1024;
+      let t = 0;
+      window.__networkColorRGB = getComputedStyle(document.documentElement).getPropertyValue('--signal-rgb').trim() || '124, 255, 178';
+
+      /* ---- "firing synapses" — a random connected pair occasionally
+         sends a bright traveling pulse along their line, like a signal
+         crossing a synapse. Tune the constants below to taste. ---- */
+      let synapses = [];               // active pulses: { aIdx, bIdx, start, duration }
+      const MAX_SYNAPSES = 6;          // how many can be firing at once
+      const FIRE_INTERVAL_MS = 550;    // how often we attempt to start a new one
+      const FIRE_DURATION_MS = [450, 900]; // [min, max] travel time per pulse
+      let lastFireAttempt = 0;
+
+      function maybeFireSynapse(now) {
+        if (reduceMotion) return;
+        if (synapses.length >= MAX_SYNAPSES) return;
+        if (nodes.length < 2) return;
+
+        // Gather every currently-visible connection and weight it by
+        // strength (closer nodes = stronger link = more likely to fire).
+        const candidates = [];
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i], b = nodes[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist >= LINK_DIST) continue;
+
+            const alreadyFiring = synapses.some(s =>
+              (s.aIdx === i && s.bIdx === j) || (s.aIdx === j && s.bIdx === i)
+            );
+            if (alreadyFiring) continue;
+
+            const strength = 1 - dist / LINK_DIST; // 0..1, higher = closer/stronger
+            candidates.push({ aIdx: i, bIdx: j, weight: strength * strength });
+          }
+        }
+        if (candidates.length === 0) return;
+
+        const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+        let r = Math.random() * totalWeight;
+        let chosen = candidates[candidates.length - 1];
+        for (const c of candidates) {
+          r -= c.weight;
+          if (r <= 0) { chosen = c; break; }
+        }
+
+        const duration = FIRE_DURATION_MS[0] + Math.random() * (FIRE_DURATION_MS[1] - FIRE_DURATION_MS[0]);
+        synapses.push({ aIdx: chosen.aIdx, bIdx: chosen.bIdx, start: now, duration });
+      }
+
+      function drawSynapses(now) {
+        synapses = synapses.filter(s => (now - s.start) < s.duration);
+
+        for (const s of synapses) {
+          const a = nodes[s.aIdx], b = nodes[s.bIdx];
+          if (!a || !b) continue;
+          const progress = Math.min(1, (now - s.start) / s.duration);
+
+          // just the traveling pulse — no line brightening
+          const px = a.x + (b.x - a.x) * progress;
+          const py = a.y + (b.y - a.y) * progress;
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(${window.__networkColorRGB},0.95)`;
+          ctx.shadowColor = `rgba(${window.__networkColorRGB},0.9)`;
+          ctx.shadowBlur = 8;
+          ctx.arc(px, py, 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      function frame(now) {
+        t += 0.016;
+        ctx.clearRect(0, 0, W, H);
+
+        if (now - lastFireAttempt > FIRE_INTERVAL_MS) {
+          lastFireAttempt = now;
+          maybeFireSynapse(now);
+        }
+
+        for (const n of nodes) {
+          if (!reduceMotion) {
+            n.x += n.vx; n.y += n.vy;
+            if (n.x < -20) n.x = W + 20;
+            if (n.x > W + 20) n.x = -20;
+            if (n.y < -20) n.y = H + 20;
+            if (n.y > H + 20) n.y = -20;
+          }
+        }
+
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i], b = nodes[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < LINK_DIST) {
+              const alpha = (1 - dist / LINK_DIST) * 0.5;
+              ctx.strokeStyle = `rgba(${window.__networkColorRGB},${alpha * 0.35})`;
+              ctx.lineWidth = 0.6;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        for (const n of nodes) {
+          const pulse = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * n.pulseSpeed + n.phase);
+          const alpha = 0.25 + pulse * 0.55;
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(${window.__networkColorRGB},${alpha})`;
+          ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        drawSynapses(now);
+
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+
+</body>
+
+</html>
