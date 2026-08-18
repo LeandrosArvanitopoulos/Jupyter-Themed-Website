@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08090b">
   <title>Leandros Arvanitopoulos — Notebook</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
@@ -66,6 +67,7 @@
       color: var(--text);
       font-family: 'IBM Plex Sans', -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
       /* overflow-x: hidden; */
       overflow: visible;
       /*This fixes the toolbar from being scrolled off*/
@@ -118,6 +120,7 @@
       z-index: 20;
       padding: 10px 24px;
       background: rgba(var(--bg-rgb), 0.85);
+      -webkit-backdrop-filter: blur(10px);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border);
       font-family: 'IBM Plex Mono', monospace;
@@ -388,6 +391,7 @@
       border-left: 2px solid var(--border);
       border-radius: 3px;
       padding: 18px 22px;
+      -webkit-backdrop-filter: blur(6px);
       backdrop-filter: blur(6px);
       transition: border-color .2s ease, background .2s ease;
     }
@@ -538,8 +542,13 @@
       }
 
       .menu-item>button {
-        padding: 5px 6px;
+        padding: 8px 8px;
         font-size: 11px;
+        min-height: 36px;
+      }
+
+      .menu-dropdown button {
+        padding: 11px 10px;
       }
 
       .kernel-status {
@@ -754,7 +763,7 @@ other: SQL · OpenGL · Matplotlib`
       {
         label: 'Run', items: [
           { label: 'Run All Cells', action: 'runAll' },
-          { label: 'Run Projects (JupyterLite) ↗ (coming soon...)', action: 'runProjects' }
+          { label: 'Run Projects (JupyterLite) ↗', action: 'runProjects' }
         ]
       },
       {
