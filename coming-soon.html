@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#08090b">
+<title>Leandros Arvanitopoulos — Live Projects (Coming Soon)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08090b;
+    --bg-rgb:8,9,11;
+    --border:#22262c;
+    --text:#e8e6e1;
+    --muted:#7a8087;
+    --signal:#7cffb2;
+    --signal-rgb:124,255,178;
+    --signal-dim:#4a9b73;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .wrap{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:32px;
+  }
+
+  .kernel-status{
+    position:fixed;
+    top:0; left:0; right:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    padding:10px 24px;
+    background:rgba(var(--bg-rgb),0.85);
+    -webkit-backdrop-filter:blur(10px);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .kernel-status .dot{
+    display:inline-block;
+    width:7px; height:7px;
+    border-radius:50%;
+    background:var(--signal);
+    box-shadow:0 0 6px var(--signal);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
+
+  .gutter-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.02em;
+    margin-bottom:18px;
+  }
+  .gutter-label::before{ content:"In [1]: "; color:#a5744a; }
+
+  h1{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:clamp(32px, 6vw, 52px);
+    margin:0 0 14px;
+    letter-spacing:-0.01em;
+  }
+  h1 .cursor{
+    display:inline-block;
+    width:0.5em; height:0.85em;
+    background:var(--signal);
+    margin-left:6px;
+    vertical-align:-0.08em;
+    animation:blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  p{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:16px;
+    line-height:1.65;
+    color:var(--muted);
+    max-width:480px;
+    margin:0 0 32px;
+  }
+  p strong{ color:var(--text); font-weight:600; }
+
+  .output-block{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--muted);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:14px 18px;
+    margin-bottom:36px;
+    text-align:left;
+    max-width:480px;
+  }
+  .output-block .field{ color:var(--signal-dim); }
+
+  a.back{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--signal);
+    text-decoration:none;
+    border-bottom:1px solid var(--signal-dim);
+    padding-bottom:2px;
+    transition:opacity .15s ease;
+  }
+  a.back:hover{ opacity:0.75; }
+
+  @media (prefers-reduced-motion: reduce){
+    .kernel-status .dot, h1 .cursor{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="kernel-status"><span class="dot"></span>kernel: python3 — not yet connected</div>
+
+<div class="wrap">
+  <div class="gutter-label">run_projects()</div>
+  <h1>Coming soon<span class="cursor"></span></h1>
+  <p>
+    Live, runnable versions of my projects — <strong>Hodgkin–Huxley neuron simulation</strong>,
+    <strong>functional connectivity visualizer</strong>, and more — are being wired up here
+    with a real in-browser Python kernel via JupyterLite.
+  </p>
+  <div class="output-block">
+    <span class="field">status:</span> building notebooks<br>
+    <span class="field">kernel:</span> pyodide (WASM) — pending deploy<br>
+    <span class="field">eta:</span> soon™
+  </div>
+  <a class="back" href="javascript:history.back()">← back to the notebook</a>
+</div>
+
+</body>
+</html>
