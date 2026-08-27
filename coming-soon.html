@@ -148,8 +148,21 @@
     <span class="field">kernel:</span> pyodide (WASM) — pending deploy<br>
     <span class="field">eta:</span> soon™
   </div>
-  <a class="back" href="javascript:history.back()">← back to the notebook</a>
+  <a class="back" href="javascript:void(0)" id="backLink">← back to the notebook</a>
 </div>
+
+<script>
+  document.getElementById('backLink').addEventListener('click', () => {
+    // If this page has its own browser history (visited via a link within
+    // the site), go back. Otherwise it was opened as a new tab (e.g. via
+    // window.open) with nothing to go back to, so close it instead.
+    if (history.length > 1) {
+      history.back();
+    } else {
+      window.close();
+    }
+  });
+</script>
 
 </body>
 </html>
