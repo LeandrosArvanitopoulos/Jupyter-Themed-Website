@@ -648,8 +648,11 @@
         kind: 'markdown',
         heading: 'News',
         body: [
-          "I am currently excited about my research work on **pretrained foundation models for EEG**. This is a new frontier in neuroscience and machine learning, and I am exploring how large-scale models can be adapted to understand brain signals more effectively.",
-          "Check out my publications and projects for more details on my work in this area."
+          " I am happy to announce that I published a preprint of my latest research in BiorXiv. You can find my paper 'Probing EEG Foundation Model Attention Maps for Lightweight Interpretable Emotion Recognition'",
+          "where we utilized Foundation Models in an unorthodox manner, connecting the Functional Connectivity analysis with the attention mechanism of Transformers.",
+          "Read all about it in the Files corner!"
+          // "I am currently excited about my research work on **pretrained foundation models for EEG**. This is a new frontier in neuroscience and machine learning, and I am exploring how large-scale models can be adapted to understand brain signals more effectively.",
+          // "Check out my publications and projects for more details on my work in this area."
         ]
       },
       {
@@ -747,6 +750,7 @@ other: SQL · OpenGL · Matplotlib`
       {
         label: 'File', items: [
           { label: 'Download CV (PDF)', action: 'downloadCV' },
+          { label: 'Download EEG FM Attention as Features (Preprint)', action: 'downloadPreprint'}
           { label: 'Download as HTML', action: 'downloadHtml' },
           { label: 'Print / Save as PDF', action: 'printPage' }
         ]
@@ -965,6 +969,11 @@ other: SQL · OpenGL · Matplotlib`
       showToast('Downloading CV…');
     }
 
+
+    function downloadPreprint() {
+      window.location.href = 'https://www.biorxiv.org/content/10.64898/2026.11.05.764629v1';
+    }
+
     function downloadHtml() {
       const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
@@ -1021,7 +1030,7 @@ other: SQL · OpenGL · Matplotlib`
       window.location.href = 'https://github.com/leandrosarvanitopoulos';
     }
 
-    const actions = { downloadCV, downloadHtml, printPage, toggleBg, toggleVignette, toggleTheme, runAll, runProjects, redirectLinkedIn, redirectGitHub, restartAndRunAll };
+    const actions = { downloadCV, downloadPreprint, downloadHtml, printPage, toggleBg, toggleVignette, toggleTheme, runAll, runProjects, redirectLinkedIn, redirectGitHub, restartAndRunAll };
 
     function closeAllMenus() {
       document.querySelectorAll('.menu-item.open').forEach(m => m.classList.remove('open'));
